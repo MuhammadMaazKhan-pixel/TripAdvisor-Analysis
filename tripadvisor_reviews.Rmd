@@ -1,0 +1,361 @@
+---
+title: "TripAdvisor Travel Reviews Analysis"
+author: "Muhammad Maaz Khan"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document: default
+  html_document: 
+    toc: true
+    toc_float: true
+    theme: cerulean
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+First, we load the csv file into a dataframe (reviews) and look at it's structure:
+```{r}
+reviews <- read.csv("C:/Users/maazk/OneDrive/Documents/tripadvisor_review.csv")
+str(reviews)
+head(reviews)
+```
+
+By observing it's structure and first 6 rows, we can see that the data is in the wide table format.
+We will want to pivot longer to make our analysis easier, and we also want to rename the categories to what they actually represent.
+
+We'll also want to check if there is any missing data, and impute the missing data if required.
+
+Check for missing data:
+```{r}
+sum(is.na(reviews))
+```
+
+The sum of missing values in the dataframe is 0, so there is no missing data. \
+We can move onto the next step of renaming the columns to their respective categories. The category types are defined in the webpage where this dataset was downloaded.
+```{r}
+library(tidyverse)
+review <- reviews |>
+  rename(
+    user_id = User.ID,
+    art_gallery = Category.1,
+    dance_clubs = Category.2,
+    juice_bars = Category.3,
+    restaurants = Category.4,
+    museums = Category.5,
+    resorts = Category.6,
+    parks_picnic_spots = Category.7,
+    beaches = Category.8,
+    theatres = Category.9,
+    religious_institutions = Category.10
+  )
+
+head(review)
+```
+
+Now that we have renamed to columns to better represent their categories we will pivot long to make our analysis easier with the tidy format.
+```{r}
+reviews <- review |>
+  pivot_longer(
+    cols = c(art_gallery, dance_clubs, juice_bars, restaurants,
+             museums, resorts, parks_picnic_spots, beaches,
+             theatres, religious_institutions),
+    names_to = "Categories",
+    values_to = "Rating"
+  )
+
+reviews
+```
+
+We can also check which ratings are higher than a 3
+
+```{r}
+high_ratings = reviews %>%
+  filter(Rating > 3)
+head(high_ratings)
+```
+
+And which are lower than 1
+
+```{r}
+low_ratings = reviews %>%
+  filter(Rating < 1)
+head(low_ratings)
+```
+
+We can use a histogram to visualize the distribution of ratings across categories, where the X axis displays the ratings and the Y axis displays how many times each rating appears across all reviews.
+
+```{r}
+ggplot(reviews, aes(x = Rating, fill = Categories)) +
+  geom_histogram(binwidth = 0.5, alpha = 0.7, position = "dodge") +
+  theme_minimal() +
+  labs(title = "Distribution of Ratings by Category",
+       x = "Rating", y = "Count") +
+  theme(legend.position = "bottom")
+```
+
+After that, we will make a table for each category
+
+```{r}
+art_gallery_rating = reviews %>%
+  filter(Categories %in% "art_gallery") %>%
+  select(c("user_id", "Rating"))
+head(art_gallery_rating)
+
+dance_clubs_rating = reviews %>%
+  filter(Categories %in% "dance_clubs") %>%
+  select(c("user_id", "Rating"))
+head(dance_clubs_rating)
+
+juice_bars_rating = reviews %>%
+  filter(Categories %in% "juice_bars") %>%
+  select(c("user_id", "Rating"))
+head(juice_bars_rating)
+
+restaurants_rating = reviews %>%
+  filter(Categories %in% "restaurants") %>%
+  select(c("user_id", "Rating"))
+head(restaurants_rating)
+
+museums_rating = reviews %>%
+  filter(Categories %in% "museums") %>%
+  select(c("user_id", "Rating"))
+head(museums_rating)
+
+resorts_rating = reviews %>%
+  filter(Categories %in% "resorts") %>%
+  select(c("user_id", "Rating"))
+head(resorts_rating)
+
+park_picnic_spots_rating = reviews %>%
+  filter(Categories %in% "park_picnic_spots") %>%
+  select(c("user_id", "Rating"))
+head(park_picnic_spots_rating)
+
+beaches_rating = reviews %>%
+  filter(Categories %in% "beaches") %>%
+  select(c("user_id", "Rating"))
+head(beaches_rating)
+
+theatres_rating = reviews %>%
+  filter(Categories %in% "theatres") %>%
+  select(c("user_id", "Rating"))
+head(theatres_rating)
+
+religious_institutions_rating = reviews %>%
+  filter(Categories %in% "religious_institutions") %>%
+  select(c("user_id", "Rating"))
+head(religious_institutions_rating)
+```
+Calculating the summary statistics (mean, median, standard deviation, variance) for the ratings in each category and storing them in a summary table.
+```{r}
+
+calculating_Summary_Stat= function(X){
+ m=mean(X)
+ md= median(X)
+ s_d=sd(X)
+ Var=var(X)
+ return(c(m,md,s_d,Var))
+ }
+categories = c("art_gallery", "dance_clubs", "juice_bars", "restaurants", 
+               "museums", "resorts", "parks_picnic_spots", "beaches", "theatres", 
+               "religious_institutions")
+
+summary_table = data.frame(Category = character(0), Mean = numeric(0), 
+                           Median = numeric(0), SD = numeric(0), Variance = numeric(0))
+
+for (category in categories) {
+  category_rating = reviews %>%
+    filter(Categories %in% category) %>%
+    select(c("user_id", "Rating"))
+  summary_stats = calculating_Summary_Stat(category_rating[[2]])
+  
+  summary_table = rbind(summary_table, data.frame(Category = category, 
+                                   Mean = summary_stats[1], 
+                                   Median = summary_stats[2], 
+                                   SD = summary_stats[3], 
+                                   Variance = summary_stats[4]))
+}
+
+summary_table
+
+```
+
+This can be visualized using box plots, with outliers.
+
+```{r}
+ggplot(reviews, aes(x = Categories, y = Rating, fill = Categories)) +
+  geom_boxplot(alpha = 0.7) +
+  theme_minimal() +
+  coord_flip() +
+  labs(title = "Boxplot of Ratings for Different Categories",
+       x = "Categories", y = "Rating") +
+  theme(legend.position = "none")
+```
+
+Now calculating the 95% confidence interval for the mean rating of each category and stores the results in a data frame.
+```{r}
+calculating_CI=function(X){
+ m=mean(X)
+ s_d=sd(X)
+ l=length(X)
+ from=m-1.96*s_d/sqrt(l)
+ to=m+1.96*s_d/sqrt(l)
+ return(c(from,to))
+}
+
+CI_95 = data.frame(Category = character(0), CI1 = numeric(0), 
+                           CI2 = numeric(0))
+
+for (category in categories) {
+  category_rating = reviews %>%
+    filter(Categories %in% category) %>%
+    select(c("user_id", "Rating"))
+  calculating_interval = calculating_CI(category_rating[[2]])
+  
+  CI_95 = rbind(CI_95, data.frame(Category = category, 
+                                  CI1 =  calculating_interval[1],CI2 =  calculating_interval[2]))
+}
+
+CI_95
+
+```
+
+Then we visualize the size of the intervals using error bars
+
+```{r ci_plot, fig.width=8, fig.height=6} 
+#fig.width and fig.height are used to make the area R give the plot larger, the data is harder to see without this
+ggplot(CI_95, aes(x = reorder(Category, -CI1), y = (CI1+CI2)/2)) +
+  geom_point(color = "blue", size = 1.5) +
+  geom_errorbar(aes(ymin = CI1, ymax = CI2), width = 0.5, color = "red") +
+  theme_minimal() +
+  coord_flip() +
+  labs(title = "95% Confidence Interval for Mean Rating per Category",
+       x = "Categories", y = "Mean Rating with CI")
+```
+Calculating the Pearson correlation matrix for all columns in the 'review' data frame 
+```{r}
+cor(review[,-1],method = "pearson")
+```
+*The Strongest Positive Correlation is between parks_picnic_spots  and juice_bars which is 0.7506509 *
+
+*The Strongest Negative Correlation is between religious_institutions and parks_picnic_spots which is -0.71073094*
+
+Calculating the Spearman correlation matrix for all columns in the 'review' data frame 
+```{r}
+cor(review[,-1],method = "spearman")
+```
+*The Strongest Positive Correlation is between parks_picnic_spots  and juice_bars which is  0.694094982 *
+
+*The Strongest Negative Correlation is between religious_institutions and parks_picnic_spots which is  -0.728365538*
+
+The strongest positive and negative correlation can be visualized using a scatter plot
+
+```{r}
+ggplot(review, aes(x = parks_picnic_spots, y = juice_bars)) +
+  geom_point(alpha = 0.6, color = "blue") +
+  geom_smooth(method = "lm", col = "red") +
+  theme_minimal() +
+  labs(title = "Scatter Plot: Parks & Picnic Spots vs. Juice Bars (Positive Correlation)",
+       x = "Parks & Picnic Spots Rating", y = "Juice Bars Rating")
+
+
+ggplot(review, aes(x = religious_institutions, y = parks_picnic_spots)) +
+  geom_point(alpha = 0.6, color = "darkred") +
+  geom_smooth(method = "lm", col = "blue") +
+  theme_minimal() +
+  labs(title = "Scatter Plot: Religious Institutions vs. Parks & Picnic Spots (Negative Correlation)",
+       x = "Religious Institutions Rating", y = "Parks & Picnic Spots Rating")
+```
+
+
+#  Machine Learning Analysis on TripAdvisor Reviews Dataset
+ 
+For Machine Learning Analusis We will do the following tasks:
+-  Perform **K-Means Clustering** to segment users based on their rating behavior.
+-  Use **Random Forest Regression** to predict ratings for a specific category.
+-  Later,use **Simple Regression** as well to see which model best suit for this data set.
+
+## Now performing K-Means Clustering to segment users based on rating patterns.
+
+
+Removing user_id and normalizing data for better clustering results and then 
+using the 'fviz_nbclust()' function with the "silhouette" method that will help us to
+find the best number of clusters by evaluating their separation.
+```{r}
+library(factoextra)
+scaled_data = scale(review[,-1])
+fviz_nbclust(scaled_data, kmeans,method = "silhouette")
+```
+
+As we can see, the optimal K is 2. so we will keep centers = 2 and find k means and then visualizing it.
+```{r}
+results = kmeans(scaled_data, centers = 2)
+fviz_cluster(results, data = scaled_data, geom = "point")
+review$cluster = as.factor(results$cluster) 
+
+head(review)
+aggregate(review[, -1], by = list(review$cluster), mean)
+```
+## Now applying Random Forest Regression to predict user ratings 
+## for a specific category based on other category ratings
+
+First we are the dataset into training (80%) and testing (20%) sets
+
+```{r}
+set.seed(123)
+trainIndex <-  sample(1:nrow(review), 2/3*nrow(review))
+trainData <- review[trainIndex, ]
+testData <- review[-trainIndex, ]
+```
+
+Training the Random Forest model to predict "art_gallery" ratings 
+using ratings from other categories as predictors and then Making predictions
+on the test set using the trained Random Forest model
+```{r}
+library(randomForest)
+rf = randomForest(art_gallery~., data=trainData)
+rf
+```
+Making predictions on the test set using the trained Random Forest model. Evaluating model performance by calculating RMSE
+```{r}
+actuals = testData$art_gallery
+preds = predict(rf, testData)
+
+rmse_value = sqrt(mean((actuals - preds)^2))
+ 
+rmse_value
+
+```
+
+The RMSE value of 0.286 suggests that, on average, the model's predictions for 
+the art_gallery category are relatively close to the actual ratings, with an error
+margin of about 0.29. Given the scale of ratings, this indicates the model performs reasonably well
+
+
+# Random Forest VS Simple Regression
+
+We will perform a simple regression test to verify that using the random forests gives a more
+accurate test result
+
+```{r}
+fit = lm(
+  art_gallery ~ dance_clubs + juice_bars + restaurants + museums + resorts + parks_picnic_spots +
+    beaches + theatres + religious_institutions, 
+  data = trainData
+)
+fit
+
+pred_vals = predict(fit, newdata = testData)
+
+target = testData$art_gallery
+rmse = sqrt(mean((target - pred_vals) ^ 2))
+
+rmse
+```
+
+The RMSE value of the simple regression method is 0.311. Since the RMSE value of simple regression is
+greater than the rmse for the random forest regression method (0.286), that means that random
+forest is a better fit for predicting art gallery ratings using other categories as predictors
+
+
