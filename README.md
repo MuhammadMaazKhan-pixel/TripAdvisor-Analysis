@@ -25,9 +25,8 @@ A data analysis project using R that examines user ratings on TripAdvisor for Ea
 
 ## Files in this Repository
 - `TripAdvisor.Rmd` – R Markdown script with all code and analysis.  
-- `TripAdvisor.pdf` – knitted report from R Markdown.  
-- Optional: `data/` – dataset (if shareable).  
-
+- `TripAdvisor.pdf` – knitted report from R Markdown.
+  
 ## How to Run
 1. Open `TripAdvisor.Rmd` in RStudio.  
 2. Install required libraries:  
